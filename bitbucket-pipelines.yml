@@ -1,35 +1,104 @@
-# This is an example Starter pipeline configuration
-# Use a skeleton to build, test and deploy using manual and parallel steps
-# -----
-# You can specify a custom docker image from Docker Hub as your build environment.
+# For more information: https://support.atlassian.com/bitbucket-cloud/docs/configure-bitbucket-pipelinesyml
+# Maintainer: Ezra Lazuardy <ezralucio@gmail.com>
+definitions:
+  caches:
+    cypress: ~/.cache
+  steps:
+    - step: &build-project-canary
+        image: cypress/base:16.14.2
+        name: Build and Test Project
+        caches:
+          - cypress
+        artifacts:
+          - cypress/videos/**
+          - cypress/screenshots/**
+          - cypress/downloads/**
+        script:
+          # setup host
+          - export CI=false
+          - export DEBIAN_FRONTEND=noninteractive
+          - ln -snf /usr/share/zoneinfo/$TIMEZONE /etc/localtime && echo $TIMEZONE > /etc/timezone
 
-image: atlassian/default-image:3
+          # setup environment variables
+          - sed -i 's/REACT_APP_API_URL=/REACT_APP_API_URL=https:\/\/test.api.daksoftware.nl/' .env.pipeline
+          - ln -f -s .env.pipeline .env
+
+          # install yarn dependencies
+          - yarn global add serve wait-on
+          - yarn --production=false --frozen-lockfile
+
+          # build project
+          - rm -rf build && yarn build
+
+          # run application
+          - serve -s build -l 3000 & wait-on http://localhost:3000
+
+          # run tests
+          - yarn test a --watchAll=false --passWithNoTests
+          - yarn cypress
+    - step: &build-project-production
+        image: cypress/base:16.14.2
+        name: Build and Test Project
+        caches:
+          - cypress
+        artifacts:
+          - cypress/videos/**
+          - cypress/screenshots/**
+          - cypress/downloads/**
+        script:
+          # setup host
+          - export CI=false
+          - export DEBIAN_FRONTEND=noninteractive
+          - ln -snf /usr/share/zoneinfo/$TIMEZONE /etc/localtime && echo $TIMEZONE > /etc/timezone
+
+          # setup environment variables
+          - sed -i 's/REACT_APP_API_URL=/REACT_APP_API_URL=https:\/\/api.daksoftware.nl/' .env.pipeline
+          - ln -f -s .env.pipeline .env
+
+          # install yarn dependencies
+          - yarn global add serve wait-on
+          - yarn --production=false --frozen-lockfile
+
+          # build project
+          - rm -rf build && yarn build
+
+          # run application
+          - serve -s build -l 3000 & wait-on http://localhost:3000
+
+          # run tests
+          - yarn test a --watchAll=false --passWithNoTests
+          - yarn cypress
 
 pipelines:
-  default:
-    - parallel:
-        - step:
-            name: "Build and Test"
-            script:
-              - echo "Your build and test goes here..."
-        - step:
-            name: "Lint"
-            script:
-              - echo "Your linting goes here..."
-        - step:
-            name: "Security scan"
-            script:
-              - echo "Your security scan goes here..."
-
-    # The following deployment steps will be executed for each pipeline run. To configure your steps and conditionally deploy see https://support.atlassian.com/bitbucket-cloud/docs/configure-bitbucket-pipelinesyml/
-    - step:
-        name: "Deployment to Staging"
-        deployment: staging
-        script:
-          - echo "Your deployment to staging script goes here..."
-    - step:
-        name: "Deployment to Production"
-        deployment: production
-        trigger: "manual"
-        script:
-          - echo "Your deployment to production script goes here..."
+  branches:
+    canary:
+      - step:
+          name: "Deployment to Canary"
+          deployment: canary
+          script:
+            - pipe: atlassian/ssh-run:0.4.0
+              variables:
+                MODE: script
+                COMMAND: bin/deployment.canary.sh
+                SERVER: $SSH_HOST
+                SSH_USER: $SSH_USER
+                SSH_KEY: $SSH_KEY
+                DEBUG: $SSH_DEBUG
+    master:
+      - step:
+          name: "Deployment to Production"
+          deployment: production
+          script:
+            - pipe: atlassian/ssh-run:0.4.0
+              variables:
+                MODE: script
+                COMMAND: bin/deployment.production.sh
+                SERVER: $SSH_HOST
+                SSH_USER: $SSH_USER
+                SSH_KEY: $SSH_KEY
+                DEBUG: $SSH_DEBUG
+  pull-requests:
+    "**":
+      - step: *build-project-canary
+    master:
+      - step: *build-project-production
