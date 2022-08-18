@@ -8,7 +8,7 @@ pipelines:
             caches:
               - node
             script:
-              - yarn install --legacy-peer-deps
+              - yarn install --force
               - yarn test
         - step:
             name: Lint the node package
