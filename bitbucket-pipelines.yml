@@ -3,8 +3,6 @@ pipelines:
   branches:
     master:
       - step:
-        services:
-          - docker
         script:
           - yarn install
           - yarn run build
