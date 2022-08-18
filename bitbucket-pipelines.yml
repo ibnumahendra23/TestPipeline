@@ -14,7 +14,7 @@ pipelines:
               - node
             script:
               - yarn install
-              - yarn test
+              - yarn run build
         - step:
             name: Code linting
             script:
@@ -22,3 +22,22 @@ pipelines:
               - npx eslint .
             caches:
               - node
+        - step:
+            name: "Deployment to Staging"
+            deployment: staging
+            script:
+              - echo "Your deployment to staging script goes here..."
+        - step:
+            name: "Deployment to Production"
+            deployment: production
+            trigger: "manual"
+            script:
+              - echo "Your deployment to production script goes here..."
+- pipe: atlassian/slack-notify:2.0.0
+  variables:
+    WEBHOOK_URL: '<string>'
+    PRETEXT: '<string>'
+    MESSAGE: '<string>'
+    # PAYLOAD_FILE: '<string>' # Optional.
+    # DEBUG: '<boolean>' # Optional.
+  
