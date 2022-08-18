@@ -8,12 +8,12 @@ pipelines:
             caches:
               - node
             script:
-              - npm install --legacy-peer-deps
-              - npm test
+              - yarn install --legacy-peer-deps
+              - yarn test
         - step:
             name: Lint the node package
             script:
-              - npm install eslint
+              - yardn add eslint
               - npx eslint .
             caches:
               - node
