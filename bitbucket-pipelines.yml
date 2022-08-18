@@ -1,104 +1,19 @@
-# For more information: https://support.atlassian.com/bitbucket-cloud/docs/configure-bitbucket-pipelinesyml
-# Maintainer: Ezra Lazuardy <ezralucio@gmail.com>
-definitions:
-  caches:
-    cypress: ~/.cache
-  steps:
-    - step: &build-project-canary
-        image: cypress/base:16.14.2
-        name: Build and Test Project
-        caches:
-          - cypress
-        artifacts:
-          - cypress/videos/**
-          - cypress/screenshots/**
-          - cypress/downloads/**
-        script:
-          # setup host
-          - export CI=false
-          - export DEBIAN_FRONTEND=noninteractive
-          - ln -snf /usr/share/zoneinfo/$TIMEZONE /etc/localtime && echo $TIMEZONE > /etc/timezone
-
-          # setup environment variables
-          - sed -i 's/REACT_APP_API_URL=/REACT_APP_API_URL=https:\/\/test.api.daksoftware.nl/' .env.pipeline
-          - ln -f -s .env.pipeline .env
-
-          # install yarn dependencies
-          - yarn global add serve wait-on
-          - yarn --production=false --frozen-lockfile
-
-          # build project
-          - rm -rf build && yarn build
-
-          # run application
-          - serve -s build -l 3000 & wait-on http://localhost:3000
-
-          # run tests
-          - yarn test a --watchAll=false --passWithNoTests
-          - yarn cypress
-    - step: &build-project-production
-        image: cypress/base:16.14.2
-        name: Build and Test Project
-        caches:
-          - cypress
-        artifacts:
-          - cypress/videos/**
-          - cypress/screenshots/**
-          - cypress/downloads/**
-        script:
-          # setup host
-          - export CI=false
-          - export DEBIAN_FRONTEND=noninteractive
-          - ln -snf /usr/share/zoneinfo/$TIMEZONE /etc/localtime && echo $TIMEZONE > /etc/timezone
-
-          # setup environment variables
-          - sed -i 's/REACT_APP_API_URL=/REACT_APP_API_URL=https:\/\/api.daksoftware.nl/' .env.pipeline
-          - ln -f -s .env.pipeline .env
-
-          # install yarn dependencies
-          - yarn global add serve wait-on
-          - yarn --production=false --frozen-lockfile
-
-          # build project
-          - rm -rf build && yarn build
-
-          # run application
-          - serve -s build -l 3000 & wait-on http://localhost:3000
-
-          # run tests
-          - yarn test a --watchAll=false --passWithNoTests
-          - yarn cypress
-
+image: node:latest
 pipelines:
   branches:
-    canary:
-      - step:
-          name: "Deployment to Canary"
-          deployment: canary
-          script:
-            - pipe: atlassian/ssh-run:0.4.0
-              variables:
-                MODE: script
-                COMMAND: bin/deployment.canary.sh
-                SERVER: $103.147.154.57
-                SSH_USER: $percepat
-                SSH_KEY: $master.percepatanweb.site
-                DEBUG: $SSH_DEBUG
     master:
       - step:
-          name: "Deployment to Production"
-          deployment: production
-          script:
-            - pipe: atlassian/ssh-run:0.4.0
-              variables:
-                MODE: script
-                COMMAND: bin/deployment.production.sh
-                SERVER: $103.147.154.57
-                SSH_USER: $percepat
-                SSH_KEY: $canary.percepatanweb.site
-                DEBUG: $SSH_DEBUG
-  pull-requests:
-    "**":
-      - step: *build-project-canary
-    master:
-      - step: *build-project-production
+        services:
+          - docker
+        script:
+          - yarn install
+          - yarn run build
+          - pipe: atlassian/ftp-deploy:0.3.0
+            variables:
+              USER: $ftp_user
+              PASSWORD: $ftp_password
+              SERVER: $ftp_host
+              REMOTE_PATH: $ftp_remote_path
+              LOCAL_PATH: $ftp_local_path #Optional
+              #DEBUG: '<boolean>' # Optional
+              #DELETE_FLAG: '<boolean>' # Optional. This is a option to delete old files before transferring new ones. Default: true.
