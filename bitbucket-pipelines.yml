@@ -8,12 +8,12 @@ pipelines:
             caches:
               - node
             script:
-              - yarn install --force
-              - yarn test
+              - npm install --force
+              - npm inst
         - step:
             name: Lint the node package
             script:
-              - yarn add eslint
+              - npm install eslint
               - npx eslint .
             caches:
               - node
