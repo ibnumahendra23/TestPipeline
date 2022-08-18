@@ -8,8 +8,16 @@ pipelines:
             caches:
               - node
             script:
-              - npm install --force
-              - npm inst
+              # install yarn dependencies
+              - yarn global add serve wait-on
+              - yarn --production=false --frozen-lockfile
+
+              # build project
+              - rm -rf build && yarn build
+
+              # run application
+              - serve -s build -l 3000 & wait-on http://localhost:3000
+
         - step:
             name: Lint the node package
             script:
