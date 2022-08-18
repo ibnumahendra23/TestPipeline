@@ -1,3 +1,5 @@
+image: node:16
+
 pipelines:
   default:
     - parallel:
@@ -6,25 +8,51 @@ pipelines:
             caches:
               - node
             script:
-              - yarn install
-              - yarn run build
+              - npm install
+              - npm test
         - step:
-            name: Code linting
+            name: Lint the node package
             script:
-              - yarn install eslint
+              - npm install eslint
               - npx eslint .
             caches:
               - node
-        - step:
-            name: "Deployment to Canary"
-            script:
-              - pipe: atlassian/ftp-deploy:0.3.7
-                variables:
-                  USER: "percepat"
-                  PASSWORD: "C7mL#92bwEaM*7"
-                  SERVER: "103.147.154.57"
-                  REMOTE_PATH: "master.percepatanweb.site"
-                # LOCAL_PATH: '<string>' # Optional
-                # DEBUG: '<boolean>' # Optional
-                # EXTRA_ARGS: '<string>' # Optional.
-                # DELETE_FLAG: '<boolean>' # Optional.
+  branches:
+    master:
+      - parallel:
+          - step:
+              name: Build and Test
+              caches:
+                - node
+              script:
+                - npm install
+                - npm test
+          - step:
+              name: Security Scan
+              script:
+                # Run a security scan for sensitive data.
+                # See more security tools at https://bitbucket.org/product/features/pipelines/integrations?&category=security
+                - pipe: atlassian/git-secrets-scan:0.5.1
+      - step:
+          name: Deploy to Production
+          deployment: Production
+          script:
+            # Bump versions before publishing
+            - npm --no-git-tag-version version "1.0.$BITBUCKET_BUILD_NUMBER" -m "Upgrade to new version"
+            # Publish package
+            - pipe: atlassian/npm-publish:0.3.2
+              variables:
+                NPM_TOKEN: $NPM_TOKEN
+      - step:
+          name: "Deployment to Master"
+          script:
+            - pipe: atlassian/ftp-deploy:0.3.7
+              variables:
+                USER: "percepat"
+                PASSWORD: "C7mL#92bwEaM*7"
+                SERVER: "103.147.154.57"
+                REMOTE_PATH: "master.percepatanweb.site"
+              # LOCAL_PATH: '<string>' # Optional
+              # DEBUG: '<boolean>' # Optional
+              # EXTRA_ARGS: '<string>' # Optional.
+              # DELETE_FLAG: '<boolean>' # Optional.
