@@ -8,7 +8,7 @@ pipelines:
             caches:
               - node
             script:
-              - npm install
+              - npm install --legacy-peer-deps
               - npm test
         - step:
             name: Lint the node package
