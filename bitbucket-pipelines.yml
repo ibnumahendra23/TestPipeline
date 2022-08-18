@@ -1,64 +1,43 @@
-image: node:16
+# For more information: https://support.atlassian.com/bitbucket-cloud/docs/configure-bitbucket-pipelinesyml
+# Maintainer: Ezra Lazuardy <ezralucio@gmail.com>
+definitions:
+  steps:
+    - step: &build-project-canary
+        image: cypress/base:16.14.2
+        name: Build and Test Project
+        script:
+          # setup host
+          - export CI=false
+          - export DEBIAN_FRONTEND=noninteractive
+          - ln -snf /usr/share/zoneinfo/$TIMEZONE /etc/localtime && echo $TIMEZONE > /etc/timezone
+
+          # setup environment variables
+          - sed -i 's/REACT_APP_API_URL=/REACT_APP_API_URL=https:\/\/test.api.daksoftware.nl/' .env.pipeline
+          - ln -f -s .env.pipeline .env
+
+          # install yarn dependencies
+          - yarn global add serve wait-on
+          - yarn --production=false --frozen-lockfile
+
+          # build project
+          - rm -rf build && yarn build
+
+          # run application
+          - serve -s build -l 3000 & wait-on http://localhost:3000
 
 pipelines:
-  default:
-    - parallel:
-        - step:
-            name: Build and Test
-            caches:
-              - node
-            script:
-              # install yarn dependencies
-              - yarn global add serve wait-on
-              - yarn --production=false --frozen-lockfile
-
-              # build project
-              - rm -rf build && yarn build
-
-              # run application
-              - serve -s build -l 3000 & wait-on http://localhost:3000
-
-        - step:
-            name: Lint the node package
-            script:
-              - npm install eslint
-              - npx eslint .
-            caches:
-              - node
   branches:
     master:
-      - parallel:
-          - step:
-              name: Build and Test
-              caches:
-                - node
-              script:
-                - npm install
-                - npm test
-          - step:
-              name: Security Scan
-              script:
-                - pipe: atlassian/git-secrets-scan:0.5.1
-          - step:
-              name: Deploy to Production
-              deployment: Production
-              script:
-                # Bump versions before publishing
-                - npm --no-git-tag-version version "1.0.$BITBUCKET_BUILD_NUMBER" -m "Upgrade to new version"
-                # Publish package
-                - pipe: atlassian/npm-publish:0.3.2
-                  variables:
-                    NPM_TOKEN: $NPM_TOKEN
-          - step:
-              name: "Deployment to Master"
-              script:
-                - pipe: atlassian/ftp-deploy:0.3.7
-                  variables:
-                    USER: "percepat"
-                    PASSWORD: "C7mL#92bwEaM*7"
-                    SERVER: "103.147.154.57"
-                    REMOTE_PATH: "master.percepatanweb.site"
-                  # LOCAL_PATH: '<string>' # Optional
-                  # DEBUG: '<boolean>' # Optional
-                  # EXTRA_ARGS: '<string>' # Optional.
-                  # DELETE_FLAG: '<boolean>' # Optional.
+      - step:
+          name: "Deployment to Master"
+          script:
+            - pipe: atlassian/ftp-deploy:0.3.7
+              variables:
+                USER: "percepat"
+                PASSWORD: "C7mL#92bwEaM*7"
+                SERVER: "103.147.154.57"
+                REMOTE_PATH: "master.percepatanweb.site"
+              # LOCAL_PATH: '<string>' # Optional
+              # DEBUG: '<boolean>' # Optional
+              # EXTRA_ARGS: '<string>' # Optional.
+              # DELETE_FLAG: '<boolean>' # Optional.
