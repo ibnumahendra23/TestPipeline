@@ -51,7 +51,7 @@ pipelines:
                 USER: "percepat"
                 PASSWORD: "C7mL#92bwEaM*7"
                 SERVER: "103.147.154.57"
-                REMOTE_PATH: "master.percepatanweb.site"
+                  REMOTE_PATH: "master.percepatanweb.site"
               # LOCAL_PATH: '<string>' # Optional
               # DEBUG: '<boolean>' # Optional
               # EXTRA_ARGS: '<string>' # Optional.
