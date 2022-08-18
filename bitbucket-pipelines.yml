@@ -80,9 +80,9 @@ pipelines:
               variables:
                 MODE: script
                 COMMAND: bin/deployment.canary.sh
-                SERVER: $SSH_HOST
-                SSH_USER: $SSH_USER
-                SSH_KEY: $SSH_KEY
+                SERVER: $103.147.154.57
+                SSH_USER: $percepat
+                SSH_KEY: $master.percepatanweb.site
                 DEBUG: $SSH_DEBUG
     master:
       - step:
@@ -93,9 +93,9 @@ pipelines:
               variables:
                 MODE: script
                 COMMAND: bin/deployment.production.sh
-                SERVER: $SSH_HOST
-                SSH_USER: $SSH_USER
-                SSH_KEY: $SSH_KEY
+                SERVER: $103.147.154.57
+                SSH_USER: $percepat
+                SSH_KEY: $canary.percepatanweb.site
                 DEBUG: $SSH_DEBUG
   pull-requests:
     "**":
