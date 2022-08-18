@@ -1,17 +1,24 @@
-image: node:latest
+#  Template NodeJS build
+
+#  This template allows you to validate your NodeJS code.
+#  The workflow allows running tests and code linting on the default branch.
+
+image: node:16
+
 pipelines:
-  branches:
-    master:
-      - step:
-        script:
-          - yarn install
-          - yarn run build
-          - pipe: atlassian/ftp-deploy:0.3.0
-            variables:
-              USER: $ftp_user
-              PASSWORD: $ftp_password
-              SERVER: $ftp_host
-              REMOTE_PATH: $ftp_remote_path
-              LOCAL_PATH: $ftp_local_path #Optional
-              #DEBUG: '<boolean>' # Optional
-              #DELETE_FLAG: '<boolean>' # Optional. This is a option to delete old files before transferring new ones. Default: true.
+  default:
+    - parallel:
+        - step:
+            name: Build and Test
+            caches:
+              - node
+            script:
+              - npm install
+              - npm test
+        - step:
+            name: Code linting
+            script:
+              - npm install eslint
+              - npx eslint .
+            caches:
+              - node
